@@ -67,8 +67,8 @@ while True:
                 nextOpen += datetime.timedelta(days=8 - nextOpen.isoweekday())
             nextOpen = nextOpen.replace(hour=9, minute=30)
             tempHTML = template
-            tempHTML.insert(200, "<p> "+str(currentDate)+" </p>")
             tempHTML.insert(200, "<p> sleeping for the weekend, wakeing in " + str((nextOpen-currentDate).total_seconds()+122) + " seconds. </p>")
+            tempHTML.insert(200, "<p> "+str(currentDate)+" </p>")            
             updateSite(tempHTML)
             yeardata = requests.get(yearurl).json()
             time.sleep((nextOpen-currentDate).total_seconds()+122)
@@ -76,8 +76,8 @@ while True:
             if currentHour >= 16:
                 nextOpen = (currentDate+datetime.timedelta(days=1)).replace(hour=9, minute=30)
                 tempHTML = template
-                tempHTML.insert(200, "<p> "+str(currentDate)+" </p>")
                 tempHTML.insert(200, "<p> market closed, sleeping for " + str((nextOpen-currentDate).total_seconds()+122) + " seconds. </p>")
+                tempHTML.insert(200, "<p> "+str(currentDate)+" </p>")
                 updateSite(tempHTML)
                 yeardata = requests.get(yearurl).json()
                 cont = 0
@@ -85,8 +85,8 @@ while True:
             elif currentHour < 9:
                 nextOpen = currentDate.replace(hour=9, minute=30)
                 tempHTML = template
-                tempHTML.insert(200, "<p> "+str(currentDate)+" </p>")
                 tempHTML.insert(200, "<p> market closed, sleeping for " + str((nextOpen-currentDate).total_seconds()+122) + " seconds. </p>")
+                tempHTML.insert(200, "<p> "+str(currentDate)+" </p>")
                 updateSite(tempHTML)
                 yeardata = requests.get(yearurl).json()
                 cont = 0
@@ -95,8 +95,8 @@ while True:
                 if currentMinute < 30:
                     nextOpen = currentDate.replace(hour=9, minute=30)
                     tempHTML = template
-                    tempHTML.insert(200, "<p> "+str(currentDate)+" </p>")
                     tempHTML.insert(200, "<p> market closed, sleeping for " + str((nextOpen-currentDate).total_seconds()+122) + " seconds. </p>")
+                    tempHTML.insert(200, "<p> "+str(currentDate)+" </p>")
                     updateSite(tempHTML)
                     yeardata = requests.get(yearurl).json()
                     cont = 0
@@ -105,7 +105,6 @@ while True:
                     cont = 1
             if cont == 1:
                 minOpen = (currentDate - currentDate.replace(hour=9, minute=30)).total_seconds()/60
-                tempHTML.insert(200, "<p>"+str(datetime.datetime.now())+" </p>")
                 tempHTML = template
                 for stock in stocks:
                     try:
@@ -119,12 +118,14 @@ while True:
                         if pctChgToDate < 0:
                             yData = list(yeardata[stock]["chart"])
                             lastDayThisLow = lowSince(yData, Cdata["close"])
-                            tempHTML.insert(200, "<p> "+stock+" has changed by " + str(pctChgToDate) + " so far, current price: " + str(Cdata["close"]) + ", opened at: " + str(Odata["marketClose"])+ " and closed at: "+str(yData[-1]["close"])+" yesterday. The last time it was this low was on " + lastDayThisLow + ". </p>")
+                            tempHTML.insert(200, "<p> "+stock+" has changed by " + str(pctChgToDate) + " so far, current price: " + str(Cdata["close"]) + ", opened at: " + str(Odata["marketClose"])+ " and closed at: "+str(yData[-1]["close"])+"$
                         else:
-                            tempHTML.insert(200, "<p> "+stock+" has changed by " + str(pctChgToDate) + " so far, current price: " + str(Cdata["close"]) + ", opened at: " + str(Odata["marketClose"])+ " and closed at: "+str(yData[-1]["close"])+" yesterday. </p>")
+                            tempHTML.insert(200, "<p> "+stock+" has changed by " + str(pctChgToDate) + " so far, current price: " + str(Cdata["close"]) + ", opened at: " + str(Odata["marketClose"])+ " and closed at: "+str(yData[-1]["close"])+"$
                     except:
                         pass
+                tempHTML.insert(200, "<p> "+str(currentDate)+" </p>")
                 updateSite(tempHTML)
                 time.sleep(302)
     except Exception as ex:
         print("Exception encountered in program: " + str(ex))
+
