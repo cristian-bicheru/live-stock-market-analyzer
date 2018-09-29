@@ -5,7 +5,7 @@ import datetime
 import os
 
 def send(msg):
-    os.system('curl https://notify.run/gAtBfgIHhd2CsZ5w -d "' + msg + '"')
+    os.system('curl https://notify.run/gAtBfgIHhd2CsZ5m -d "' + msg + '"')
 
 def updateSite(newHTML):
     HTML = ""
@@ -33,11 +33,12 @@ urlp1 = "https://api.iextrading.com/1.0/stock/market/batch?symbols="
 urlp2 = "&types=chart&range=1d&last=5"
 urlp3 = "&types=chart&range=1y&last=5"
 
-stocks = ("AMZN", "GOOG", "AAPL", "MSFT", "NVDA", "AMD")
+stocks = ("AMZN", "AAPL", "GOOG")
+
+baseportfolio = ("AMZN:20:1500")
 
 stockString = ""
 for stock in stocks:
-    pauselist[stock] = 0
     stockString = stockString + stock + ","
 
 url = urlp1+stockString+urlp2
@@ -54,7 +55,7 @@ def lowSince(data, price):
 
 while True:
     try:
-        data = requests.get(url).json()
+        template = loadTemplate()
         currentDate = datetime.datetime.now()
         currentHour = currentDate.hour
         currentMinute = currentDate.minute
@@ -63,7 +64,7 @@ while True:
         notopen = currentDate.weekday()
         if notopen >= 5 or (currentDate.weekday() == 4 and currentHour >= 16):
             nextOpen = currentDate
-            if nextOpen.isoweekday() in set((6, 7)):
+            if nextOpen.isoweekday() in set((5, 6, 7)):
                 nextOpen += datetime.timedelta(days=8 - nextOpen.isoweekday())
             nextOpen = nextOpen.replace(hour=9, minute=30)
             tempHTML = template
@@ -106,26 +107,56 @@ while True:
             if cont == 1:
                 minOpen = (currentDate - currentDate.replace(hour=9, minute=30)).total_seconds()/60
                 tempHTML = template
+                try:
+                    data = requests.get(url).json()
+                except:
+                    print("data retrival error")
                 for stock in stocks:
                     try:
                         sData = list(data[stock]["chart"])
-                        Cdata = sData[-2]
-                        Ldata = sData[-3]
+                        Cdata = sData[-1]
                         Odata = sData[0]
                         yData = list(yeardata[stock]["chart"])
-                        pctChange = Cdata["changeOverTime"]
-                        pctChgToDate = round((Cdata["close"]-yData[-1]["close"])/yData[-1]["close"]*100, 2)
-                        if pctChgToDate < 0:
-                            yData = list(yeardata[stock]["chart"])
-                            lastDayThisLow = lowSince(yData, Cdata["close"])
-                            tempHTML.insert(223, "<p> "+stock+" has changed by " + str(pctChgToDate) + " so far, current price: " + str(Cdata["close"]) + ", opened at: " + str(Odata["marketClose"])+ " and closed at: "+str(yData[-1]["close"])+"$
+                        if Cdata["numberOfTrades"] > 0:
+                            cdataclose = Cdata["close"]
+                            ydataclose = yData[-1]["close"]
+                            pctChange = Cdata["changeOverTime"]
+                            pctChgToDate = round((cdataclose-ydataclose)/ydataclose*100, 2)
+                            if pctChgToDate < 0:
+                                lastDayThisLow = lowSince(yData, cdataclose)
+                                tempHTML.insert(223, "<p> "+stock+" has changed by " + str(pctChgToDate) + " so far, current price: " + str(cdataclose) + ", opened at: " + str(Odata["close"])+ " and closed at: "+str(ydataclose)+" yesterday. The last time it was this low was on " + lastDayThisLow + ". </p> \n")
+                            else:
+                                tempHTML.insert(223, "<p> "+stock+" has changed by " + str(pctChgToDate) + " so far, current price: " + str(cdataclose) + ", opened at: " + str(Odata["close"])+ " and closed at: "+str(ydataclose)+" yesterday. </p>\n")
                         else:
-                            tempHTML.insert(223, "<p> "+stock+" has changed by " + str(pctChgToDate) + " so far, current price: " + str(Cdata["close"]) + ", opened at: " + str(Odata["marketClose"])+ " and closed at: "+str(yData[-1]["close"])+"$
-                    except:
-                        pass
+                            tempHTML.insert(223, "<p> No trades for " + stock + " in the last minute. </p>")
+                    except Exception as ex:
+                        print(ex)
+                
+                balance = 100000
+                
+                for stock in baseportfolio:
+                    try:
+                        info = stock.split(":")
+                        symbol = info[0]
+                        shares = info[1]
+                        buy = info[2]
+                        sData = list(data[symbol]["chart"])
+                        for x in range(1, 100):
+                            Cdata = sData[-x]
+                            if Cdata["numberOfTrades"] > 0:
+                                cdataclose = Cdata["close"]
+                                balance += shares*(cdataclose-buy)
+                                break
+                            print("bug")
+                    except Exception as ex:
+                        print(ex)
+                if currentHour == 15 and currentMinute >= 59:
+                    send("portfolio closed at "+str(balance/100000)+" today ("+str(currentDate)+")")
+                
+                tempHTML.insert(223, "<p> Portfolio Gains: "+str(balance/100000)+" </p>")
                 tempHTML.insert(223, "<p> "+str(currentDate)+" </p>")
                 updateSite(tempHTML)
-                time.sleep(302)
+                tempHTML = ""
+                time.sleep(62)
     except Exception as ex:
         print("Exception encountered in program: " + str(ex))
-
