@@ -33,9 +33,9 @@ urlp1 = "https://api.iextrading.com/1.0/stock/market/batch?symbols="
 urlp2 = "&types=chart&range=1d&last=5"
 urlp3 = "&types=chart&range=1y&last=5"
 
-stocks = ("AMZN", "AAPL", "GOOG")
+stocks = ("AMZN", "AXP")
 
-baseportfolio = ("AMZN:20:1500")
+baseportfolio = ("AMZN:50:2004.95", "AXP:300:103.47")
 
 stockString = ""
 for stock in stocks:
@@ -44,6 +44,13 @@ for stock in stocks:
 url = urlp1+stockString+urlp2
 yearurl = urlp1+stockString+urlp3
 yeardata = requests.get(yearurl).json()
+
+def openp(data):
+    for x in range(0, len(data)):
+        try:
+            return data[x]["marketClose"]
+        except:
+            pass
 
 def lowSince(data, price):
     for day in range(len(data)-1, 0, -1):
@@ -124,11 +131,23 @@ while True:
                             pctChgToDate = round((cdataclose-ydataclose)/ydataclose*100, 2)
                             if pctChgToDate < 0:
                                 lastDayThisLow = lowSince(yData, cdataclose)
-                                tempHTML.insert(223, "<p> "+stock+" has changed by " + str(pctChgToDate) + " so far, current price: " + str(cdataclose) + ", opened at: " + str(Odata["close"])+ " and closed at: "+str(ydataclose)+" yesterday. The last time it was this low was on " + lastDayThisLow + ". </p> \n")
+                                tempHTML.insert(223, "<p> "+stock+" has changed by " + str(pctChgToDate) + " so far, current price: " + str(cdataclose) + ", opened at: " + str(openp(sData))+ " and closed at: "+str(ydataclose)+" yesterday. The last time it was this low was on " + lastDayThisLow + ". </p> \n")
                             else:
-                                tempHTML.insert(223, "<p> "+stock+" has changed by " + str(pctChgToDate) + " so far, current price: " + str(cdataclose) + ", opened at: " + str(Odata["close"])+ " and closed at: "+str(ydataclose)+" yesterday. </p>\n")
+                                tempHTML.insert(223, "<p> "+stock+" has changed by " + str(pctChgToDate) + " so far, current price: " + str(cdataclose) + ", opened at: " + str(openp(sData))+ " and closed at: "+str(ydataclose)+" yesterday. </p>\n")
                         else:
-                            tempHTML.insert(223, "<p> No trades for " + stock + " in the last minute. </p>")
+                            for x in range(1, len(sData)):
+                                Cdata = sData[-x]
+                                if Cdata["numberOfTrades"] > 0:
+                                    cdataclose = Cdata["close"]
+                                    ydataclose = yData[-1]["close"]
+                                    pctChange = Cdata["changeOverTime"]
+                                    pctChgToDate = round((cdataclose-ydataclose)/ydataclose*100, 2)
+                                    if pctChgToDate < 0:
+                                        lastDayThisLow = lowSince(yData, cdataclose)
+                                        tempHTML.insert(223, "<p> "+stock+" has changed by " + str(pctChgToDate) + " so far, current price: " + str(cdataclose) + ", opened at: " + str(openp(sData))+ " and closed at: "+str(ydataclose)+" yesterday. The last time it was this low was on " + lastDayThisLow + ". </p> \n")
+                                    else:
+                                        tempHTML.insert(223, "<p> "+stock+" has changed by " + str(pctChgToDate) + " so far, current price: " + str(cdataclose) + ", opened at: " + str(openp(sData))+ " and closed at: "+str(ydataclose)+" yesterday. </p>\n")
+                                    break
                     except Exception as ex:
                         print(ex)
                 
@@ -141,20 +160,19 @@ while True:
                         shares = info[1]
                         buy = info[2]
                         sData = list(data[symbol]["chart"])
-                        for x in range(1, 100):
+                        for x in range(1, len(sData)):
                             Cdata = sData[-x]
                             if Cdata["numberOfTrades"] > 0:
                                 cdataclose = Cdata["close"]
-                                balance += shares*(cdataclose-buy)
+                                balance += float(shares)*(cdataclose-float(buy))
                                 break
-                            print("bug")
                     except Exception as ex:
                         print(ex)
                 if currentHour == 15 and currentMinute >= 59:
                     send("portfolio closed at "+str(balance/100000)+" today ("+str(currentDate)+")")
                 
-                tempHTML.insert(223, "<p> Portfolio Gains: "+str(balance/100000)+" </p>")
-                tempHTML.insert(223, "<p> "+str(currentDate)+" </p>")
+                tempHTML.insert(2230, "<p> Portfolio Gains: "+str(balance/100000)+" </p>")
+                tempHTML.insert(2230, "<p> "+str(currentDate)+" </p>")
                 updateSite(tempHTML)
                 tempHTML = ""
                 time.sleep(62)
